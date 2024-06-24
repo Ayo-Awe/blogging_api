@@ -48,7 +48,7 @@ func TestCreateArticle(t *testing.T) {
 		require.NotEmpty(t, article)
 		require.Equal(t, payload.Title, article.Title)
 		require.Equal(t, payload.Content, article.Content)
-		require.Empty(t, article.Tags)
+		require.NotNil(t, article.Tags)
 	})
 
 }

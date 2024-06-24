@@ -34,5 +34,5 @@ func (repo *articleRepo) CreateArticle(ctx context.Context, article *Article) (*
 		return nil, err
 	}
 
-	return article, nil
+	return newArticle, nil
 }

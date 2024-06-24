@@ -5,7 +5,11 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
+
+	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/go-ozzo/ozzo-validation/v4/is"
 )
 
 type ArticleFilter struct {
@@ -44,6 +48,25 @@ type Article struct {
 	Tags        Tags      `json:"tags" db:"tags"`
 	PublishedAt time.Time `json:"published_at" db:"published_at"`
 	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+}
+
+func (a *Article) Validate() error {
+	a.clean()
+	return validation.ValidateStruct(a,
+		validation.Field(&a.Title, validation.Required, validation.Length(5, 255)),
+		validation.Field(&a.Content, validation.Required, validation.Length(5, 0)),
+		validation.Field(&a.Tags, validation.Each(validation.Length(2, 0), is.LowerCase)),
+	)
+}
+
+func (a *Article) clean() {
+	a.Title = strings.TrimSpace(a.Title)
+	a.Content = strings.TrimSpace(a.Content)
+
+	for i, tag := range a.Tags {
+		trimmed := strings.TrimSpace(tag)
+		a.Tags[i] = strings.ToLower(trimmed)
+	}
 }
 
 type ArticleRepository interface {

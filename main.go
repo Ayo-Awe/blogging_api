@@ -27,6 +27,7 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Route("/articles", func(r chi.Router) {
 		r.Post("/", app.CreateArticle)
+		r.Get("/", app.GetArticles)
 	})
 
 	fmt.Println("starting server on port 8080")

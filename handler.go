@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/ayo-awe/blogging_api/database"
+	"github.com/ayo-awe/blogging_api/utils"
 )
 
 type Application struct {
@@ -80,6 +82,27 @@ func (a *Application) CreateArticle(w http.ResponseWriter, r *http.Request) {
 
 	data := map[string]interface{}{"article": article}
 	a.created(w, data, nil)
+}
+
+func (a *Application) GetArticles(w http.ResponseWriter, r *http.Request) {
+	// get rawTags  from query params
+	var tags database.Tags
+
+	rawTags := r.URL.Query().Get("tags")
+	if rawTags != "" {
+		mapFn := func(ele string) string { return strings.ToLower(strings.TrimSpace(ele)) }
+		tags = utils.Map(strings.Split(rawTags, ","), mapFn)
+	}
+
+	// get articles by tags
+	articles, err := a.repo.GetArticles(r.Context(), database.ArticleFilter{Tags: tags})
+	if err != nil {
+		a.httpError(w, http.StatusInternalServerError, "An unexpected error occured")
+		a.logger.Error(err.Error())
+		return
+	}
+
+	a.ok(w, map[string]interface{}{"articles": articles}, nil)
 }
 
 func decodeJSON(r *http.Request, dest interface{}) error {

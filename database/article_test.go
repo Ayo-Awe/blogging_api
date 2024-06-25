@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	_ "github.com/lib/pq"
@@ -9,14 +10,8 @@ import (
 )
 
 func TestCreateArticle(t *testing.T) {
-	db, err := NewDatabase("postgresql://aweayo:aweayo@localhost:5432/blogging_api_test?sslmode=disable")
-	require.NoError(t, err)
-
-	defer func() {
-		_, err := db.GetDB().Exec("TRUNCATE TABLE articles;")
-		require.NoError(t, err)
-		db.GetDB().Close()
-	}()
+	db, closeFn := initTestDB(t)
+	defer closeFn()
 
 	repo := NewArticleRepository(db)
 
@@ -51,4 +46,71 @@ func TestCreateArticle(t *testing.T) {
 		require.NotNil(t, article.Tags)
 	})
 
+}
+
+func TestGetArticles(t *testing.T) {
+	db, closeFn := initTestDB(t)
+	defer closeFn()
+
+	repo := NewArticleRepository(db)
+	articles := []Article{
+		{
+			Title:   "Machine Learning in 20 minutes",
+			Content: "Learn machine learning in 20 mins",
+			Tags:    Tags{"machine learning", "ai"},
+		},
+		{
+			Title: "The art of cooking",
+			Content: `Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+			Quisque bibendum posuere dolor, euismod venenatis sem condimentum ut.
+			Proin maximus tincidunt auctor. Quisque nunc urna, mollis.`,
+			Tags: Tags{"food", "cooking"},
+		},
+		{
+			Title: "Golang for dummies",
+			Content: `Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+			Quisque bibendum posuere dolor, euismod venenatis sem condimentum ut.
+			Proin maximus tincidunt auctor. Quisque nunc urna, mollis.`,
+			Tags: Tags{"programming", "golang", "go"},
+		},
+		{
+			Title: "Go Error Handling Explained",
+			Content: `Sed ipsum ante, dapibus eu placerat in, rhoncus vitae nisi.
+			 Nam at pharetra enim. Aenean sollicitudin sed ante in vestibulum.`,
+			Tags: Tags{"golang", "go"},
+		},
+		{
+			Title: "How to make a slushy",
+			Content: `Duis consectetur laoreet nisl, in malesuada lorem tristique sit amet.
+			Cras in tortor porttitor, mollis ligula nec, elementum tellus. Maecenas arcu ante.`,
+			Tags: Tags{"slushy", "food"},
+		},
+	}
+
+	for _, article := range articles {
+		_, err := repo.CreateArticle(context.Background(), &article)
+		require.NoError(t, err)
+	}
+
+	t.Run("fetch with no filter", func(t *testing.T) {
+		foundArticles, err := repo.GetArticles(context.Background(), ArticleFilter{})
+		require.NoError(t, err)
+		require.Len(t, foundArticles, len(articles))
+	})
+
+	t.Run("filter by multiple tags", func(t *testing.T) {
+		foundArticles, err := repo.GetArticles(context.Background(), ArticleFilter{Tags: Tags{"golang", "food"}})
+		require.NoError(t, err)
+		require.Len(t, foundArticles, 4)
+
+		for _, article := range foundArticles {
+			require.True(t, slices.Contains(article.Tags, "golang") || slices.Contains(article.Tags, "food"))
+		}
+	})
+
+	t.Run("filter by empty tags", func(t *testing.T) {
+		foundArticles, err := repo.GetArticles(context.Background(), ArticleFilter{Tags: Tags{}})
+		require.NoError(t, err)
+		require.Len(t, foundArticles, len(articles))
+	})
 }

@@ -13,8 +13,7 @@ import (
 )
 
 type ArticleFilter struct {
-	Tags        Tags
-	PublishedAt time.Time
+	Tags Tags
 }
 
 type Tags []string
@@ -70,7 +69,7 @@ func (a *Article) clean() {
 }
 
 type ArticleRepository interface {
-	// GetArticles(filter ArticleFilter) ([]Article, error)
+	GetArticles(ctx context.Context, filter ArticleFilter) ([]Article, error)
 	// GetArticleByID(ID int) (*Article, error)
 	CreateArticle(ctx context.Context, article *Article) (*Article, error)
 	// UpdateArticle(article *Article) (*Article, error)

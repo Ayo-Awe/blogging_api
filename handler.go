@@ -19,6 +19,17 @@ type Application struct {
 
 type envelope map[string]interface{}
 
+func (a *Application) BuildRoutes() chi.Router {
+	router := chi.NewRouter()
+	router.Route("/articles", func(r chi.Router) {
+		r.Post("/", a.CreateArticle)
+		r.Get("/", a.GetArticles)
+		r.Get("/{id}", a.GetArticleByID)
+	})
+
+	return router
+}
+
 func (a *Application) CreateArticle(w http.ResponseWriter, r *http.Request) {
 	var payload database.Article
 

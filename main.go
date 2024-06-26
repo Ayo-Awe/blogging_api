@@ -25,11 +25,7 @@ func main() {
 	app := Application{repo: repo, logger: logger}
 
 	r.Use(middleware.Logger)
-	r.Route("/articles", func(r chi.Router) {
-		r.Post("/", app.CreateArticle)
-		r.Get("/", app.GetArticles)
-		r.Get("/{id}", app.GetArticleByID)
-	})
+	r.Mount("/api", app.BuildRoutes())
 
 	fmt.Println("starting server on port 8080")
 	http.ListenAndServe(":8080", r)

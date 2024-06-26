@@ -28,6 +28,7 @@ func main() {
 	r.Route("/articles", func(r chi.Router) {
 		r.Post("/", app.CreateArticle)
 		r.Get("/", app.GetArticles)
+		r.Get("/{id}", app.GetArticleByID)
 	})
 
 	fmt.Println("starting server on port 8080")

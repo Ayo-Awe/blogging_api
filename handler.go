@@ -1,12 +1,15 @@
 package main
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/ayo-awe/blogging_api/database"
 	"github.com/ayo-awe/blogging_api/utils"
+	"github.com/go-chi/chi/v5"
 )
 
 type Application struct {
@@ -63,4 +66,28 @@ func (a *Application) GetArticles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.Ok(w, envelope{"articles": articles}, nil)
+}
+
+func (a *Application) GetArticleByID(w http.ResponseWriter, r *http.Request) {
+	rawID := chi.URLParam(r, "id")
+
+	id, err := strconv.Atoi(rawID)
+	if err != nil {
+		utils.HTTPError(w, http.StatusNotFound, "Article not found")
+		return
+	}
+
+	article, err := a.repo.GetArticleByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, database.ErrArticleNotFound) {
+			utils.HTTPError(w, http.StatusNotFound, "Article not found")
+			return
+		}
+
+		utils.HTTPError(w, http.StatusInternalServerError, "An unexpected error occured")
+		a.logger.Error("GetArticleByID: " + err.Error())
+		return
+	}
+
+	utils.Ok(w, envelope{"article": article}, nil)
 }

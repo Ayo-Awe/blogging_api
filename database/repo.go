@@ -70,7 +70,7 @@ func (a *Article) clean() {
 
 type ArticleRepository interface {
 	GetArticles(ctx context.Context, filter ArticleFilter) ([]Article, error)
-	// GetArticleByID(ID int) (*Article, error)
+	GetArticleByID(ctx context.Context, ID int) (*Article, error)
 	CreateArticle(ctx context.Context, article *Article) (*Article, error)
 	// UpdateArticle(article *Article) (*Article, error)
 	// DeleteArticle(ID int) error

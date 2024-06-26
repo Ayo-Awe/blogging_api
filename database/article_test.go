@@ -114,3 +114,37 @@ func TestGetArticles(t *testing.T) {
 		require.Len(t, foundArticles, len(articles))
 	})
 }
+
+func TestGetArticleByID(t *testing.T) {
+	// get test db
+	db, closeFn := initTestDB(t)
+	defer closeFn()
+
+	// create repo
+	repo := NewArticleRepository(db)
+
+	t.Run("article successfully found", func(t *testing.T) {
+		payload := Article{
+			Title:   "How to write code efficiently",
+			Content: "lorem ipsum and stuff",
+			Tags:    Tags{"coding"},
+		}
+
+		// seed article
+		createdArticle, err := repo.CreateArticle(context.Background(), &payload)
+		require.NoError(t, err)
+
+		foundArticle, err := repo.GetArticleByID(context.Background(), createdArticle.ID)
+		require.NoError(t, err)
+		require.Equal(t, createdArticle, foundArticle)
+	})
+
+	t.Run("article not found", func(t *testing.T) {
+		nonExistentID := 0
+
+		foundArticle, err := repo.GetArticleByID(context.Background(), nonExistentID)
+
+		require.Nil(t, foundArticle)
+		require.ErrorIs(t, err, ErrArticleNotFound)
+	})
+}

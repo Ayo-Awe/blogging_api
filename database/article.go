@@ -2,6 +2,8 @@ package database
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -10,6 +12,10 @@ import (
 type articleRepo struct {
 	db *sqlx.DB
 }
+
+var (
+	ErrArticleNotFound = errors.New("article not found")
+)
 
 const (
 	createArticle = `
@@ -22,11 +28,22 @@ const (
 		title,
 		content,
 		tags,
-		published_at
+		published_at,
 		updated_at
 	FROM "articles"
 	WHERE tags ?| $1 OR $1 = '{}' OR $1 IS NULL
 	ORDER BY published_at DESC;`
+
+	getArticleByID = `
+	SELECT
+		id,
+		title,
+		content,
+		tags,
+		published_at,
+		updated_at
+	FROM "articles"
+	WHERE id = $1;`
 )
 
 func NewArticleRepository(database Database) ArticleRepository {
@@ -68,4 +85,18 @@ func (repo *articleRepo) GetArticles(ctx context.Context, filter ArticleFilter) 
 	}
 
 	return articles, nil
+}
+
+func (repo *articleRepo) GetArticleByID(ctx context.Context, ID int) (*Article, error) {
+	var article Article
+
+	err := repo.db.QueryRowxContext(ctx, getArticleByID, ID).StructScan(&article)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrArticleNotFound
+		}
+		return nil, err
+	}
+
+	return &article, nil
 }

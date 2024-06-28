@@ -44,6 +44,16 @@ const (
 		updated_at
 	FROM "articles"
 	WHERE id = $1;`
+
+	updateArticle = `
+	UPDATE "articles"
+	SET
+		title = $2,
+		content = $3,
+		tags = $4,
+		updated_at = CURRENT_TIMESTAMP
+	WHERE id = $1
+	RETURNING *;`
 )
 
 func NewArticleRepository(database Database) ArticleRepository {
@@ -99,4 +109,20 @@ func (repo *articleRepo) GetArticleByID(ctx context.Context, ID int) (*Article, 
 	}
 
 	return &article, nil
+}
+
+func (repo *articleRepo) UpdateArticle(ctx context.Context, article *Article) (*Article, error) {
+	var updatedArticle Article
+
+	row := repo.db.QueryRowxContext(ctx, updateArticle,
+		article.ID,
+		article.Title,
+		article.Content,
+		article.Tags)
+
+	if err := row.StructScan(&updatedArticle); err != nil {
+		return nil, err
+	}
+
+	return &updatedArticle, nil
 }

@@ -47,7 +47,6 @@ func HTTPError(w http.ResponseWriter, statusCode int, msg string) {
 
 func DecodeJSON(r *http.Request, dest interface{}) error {
 	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
 
 	return decoder.Decode(dest)
 }

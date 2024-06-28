@@ -148,3 +148,34 @@ func TestGetArticleByID(t *testing.T) {
 		require.ErrorIs(t, err, ErrArticleNotFound)
 	})
 }
+
+func TestUpdateArticle(t *testing.T) {
+	// get test db
+	db, closeFn := initTestDB(t)
+	defer closeFn()
+
+	// create repo
+	repo := NewArticleRepository(db)
+	newArticle := Article{
+		Title:   "How to write code efficiently",
+		Content: "lorem ipsum and stuff",
+		Tags:    Tags{"coding"},
+	}
+
+	// seed article
+	createdArticle, err := repo.CreateArticle(context.Background(), &newArticle)
+	require.NoError(t, err)
+
+	// update content
+	createdArticle.Title = "How to cook oats"
+	createdArticle.Content = "Just do it"
+	createdArticle.Tags = Tags{"oats", "cooking", "food"}
+
+	updatedArticle, err := repo.UpdateArticle(context.Background(), createdArticle)
+	require.NoError(t, err)
+	require.Equal(t, createdArticle.Title, updatedArticle.Title)
+	require.Equal(t, createdArticle.Content, updatedArticle.Content)
+	require.Equal(t, createdArticle.Tags, updatedArticle.Tags)
+	require.NotEqual(t, createdArticle.UpdatedAt, updatedArticle.UpdatedAt)
+
+}

@@ -10,11 +10,38 @@ import (
 	"github.com/ayo-awe/blogging_api/database"
 	"github.com/ayo-awe/blogging_api/utils"
 	"github.com/go-chi/chi/v5"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/go-ozzo/ozzo-validation/v4/is"
 )
 
 type Application struct {
 	logger *slog.Logger
 	repo   database.ArticleRepository
+}
+
+type UpdateArticleRequest struct {
+	Title   string
+	Content string
+	Tags    database.Tags
+}
+
+func (u *UpdateArticleRequest) Validate() error {
+	u.clean()
+	return validation.ValidateStruct(u,
+		validation.Field(&u.Title, validation.Length(5, 255)),
+		validation.Field(&u.Content, validation.Length(5, 0)),
+		validation.Field(&u.Tags, validation.Each(validation.Length(2, 0), is.LowerCase)),
+	)
+}
+
+func (u *UpdateArticleRequest) clean() {
+	u.Title = strings.TrimSpace(u.Title)
+	u.Content = strings.TrimSpace(u.Content)
+
+	for i, tag := range u.Tags {
+		trimmed := strings.TrimSpace(tag)
+		u.Tags[i] = strings.ToLower(trimmed)
+	}
 }
 
 type envelope map[string]interface{}
@@ -25,6 +52,7 @@ func (a *Application) BuildRoutes() chi.Router {
 		r.Post("/", a.CreateArticle)
 		r.Get("/", a.GetArticles)
 		r.Get("/{id}", a.GetArticleByID)
+		r.Patch("/{id}", a.UpdateArticle)
 	})
 
 	return router
@@ -101,4 +129,64 @@ func (a *Application) GetArticleByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.Ok(w, envelope{"article": article}, nil)
+}
+
+func (a *Application) UpdateArticle(w http.ResponseWriter, r *http.Request) {
+	rawID := chi.URLParam(r, "id")
+
+	id, err := strconv.Atoi(rawID)
+	if err != nil {
+		utils.HTTPError(w, http.StatusNotFound, "Article Not Found")
+		return
+	}
+
+	// find article by id
+	article, err := a.repo.GetArticleByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, database.ErrArticleNotFound) {
+			utils.HTTPError(w, http.StatusNotFound, "Article Not Found")
+			return
+		}
+		a.logger.Error("Update Article: " + err.Error())
+		utils.HTTPError(w, http.StatusInternalServerError, "An unexpected error occured")
+		return
+	}
+
+	// parse request body
+	var payload UpdateArticleRequest
+	err = utils.DecodeJSON(r, &payload)
+	if err != nil {
+		a.logger.Error("Update Article: " + err.Error())
+		utils.HTTPError(w, http.StatusInternalServerError, "Failed to decode JSON request body")
+		return
+	}
+
+	// validate request body
+	if err = payload.Validate(); err != nil {
+		utils.HTTPError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// update article with changes from request body
+	if payload.Title != "" {
+		article.Title = payload.Title
+	}
+
+	if payload.Content != "" {
+		article.Content = payload.Content
+	}
+
+	if len(payload.Tags) > 0 {
+		article.Tags = payload.Tags
+	}
+
+	// save updates in the databse
+	updatedArticle, err := a.repo.UpdateArticle(r.Context(), article)
+	if err != nil {
+		a.logger.Error("Update Article: " + err.Error())
+		utils.HTTPError(w, http.StatusInternalServerError, "Failed to decode JSON request body")
+		return
+	}
+
+	utils.Ok(w, envelope{"article": updatedArticle}, nil)
 }

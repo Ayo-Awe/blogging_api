@@ -73,5 +73,5 @@ type ArticleRepository interface {
 	GetArticleByID(ctx context.Context, ID int) (*Article, error)
 	CreateArticle(ctx context.Context, article *Article) (*Article, error)
 	UpdateArticle(ctx context.Context, article *Article) (*Article, error)
-	// DeleteArticle(ID int) error
+	DeleteArticle(ctx context.Context, ID int) error
 }

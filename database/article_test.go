@@ -179,3 +179,24 @@ func TestUpdateArticle(t *testing.T) {
 	require.NotEqual(t, createdArticle.UpdatedAt, updatedArticle.UpdatedAt)
 
 }
+
+func TestDeleteArticle(t *testing.T) {
+	db, closeFn := initTestDB(t)
+	defer closeFn()
+
+	repo := NewArticleRepository(db)
+
+	payload := Article{
+		Title:   "How to bake bread",
+		Content: "Just do it",
+		Tags:    Tags{"baking"},
+	}
+
+	article, err := repo.CreateArticle(context.Background(), &payload)
+	require.NoError(t, err)
+
+	require.NoError(t, repo.DeleteArticle(context.Background(), article.ID))
+
+	_, err = repo.GetArticleByID(context.Background(), article.ID)
+	require.ErrorIs(t, err, ErrArticleNotFound)
+}

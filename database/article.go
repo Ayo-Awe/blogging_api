@@ -54,6 +54,10 @@ const (
 		updated_at = CURRENT_TIMESTAMP
 	WHERE id = $1
 	RETURNING *;`
+
+	deleteArticle = `
+	DELETE FROM "articles"
+	WHERE id = $1;`
 )
 
 func NewArticleRepository(database Database) ArticleRepository {
@@ -125,4 +129,13 @@ func (repo *articleRepo) UpdateArticle(ctx context.Context, article *Article) (*
 	}
 
 	return &updatedArticle, nil
+}
+
+func (repo *articleRepo) DeleteArticle(ctx context.Context, ID int) error {
+	_, err := repo.db.ExecContext(ctx, deleteArticle, ID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

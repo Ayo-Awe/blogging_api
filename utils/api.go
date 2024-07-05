@@ -31,6 +31,11 @@ func Created(w http.ResponseWriter, data interface{}, metadata interface{}) {
 
 }
 
+func NoContent(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func JSONResponse(w http.ResponseWriter, statusCode int, response response) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)

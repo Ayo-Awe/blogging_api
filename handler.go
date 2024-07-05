@@ -53,6 +53,7 @@ func (a *Application) BuildRoutes() chi.Router {
 		r.Get("/", a.GetArticles)
 		r.Get("/{id}", a.GetArticleByID)
 		r.Patch("/{id}", a.UpdateArticle)
+		r.Delete("/{id}", a.DeleteArticle)
 	})
 
 	return router
@@ -97,6 +98,7 @@ func (a *Application) GetArticles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get articles by tags
+	// todo: paginate articles
 	articles, err := a.repo.GetArticles(r.Context(), database.ArticleFilter{Tags: tags})
 	if err != nil {
 		utils.HTTPError(w, http.StatusInternalServerError, "An unexpected error occured")
@@ -189,4 +191,36 @@ func (a *Application) UpdateArticle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.Ok(w, envelope{"article": updatedArticle}, nil)
+}
+
+func (a *Application) DeleteArticle(w http.ResponseWriter, r *http.Request) {
+	// get article id
+	rawID := chi.URLParam(r, "id")
+
+	id, err := strconv.Atoi(rawID)
+	if err != nil {
+		utils.HTTPError(w, http.StatusNotFound, "Article Not Found")
+		return
+	}
+
+	_, err = a.repo.GetArticleByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, database.ErrArticleNotFound) {
+			utils.HTTPError(w, http.StatusNotFound, "Article Not Found")
+			return
+		}
+		a.logger.Error("Delete Article" + err.Error())
+		utils.HTTPError(w, http.StatusInternalServerError, "An unexpected error occured")
+		return
+	}
+
+	err = a.repo.DeleteArticle(r.Context(), id)
+	if err != nil {
+
+		a.logger.Error("Delete Article" + err.Error())
+		utils.HTTPError(w, http.StatusInternalServerError, "An unexpected error occured")
+		return
+	}
+
+	utils.NoContent(w)
 }

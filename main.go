@@ -28,5 +28,7 @@ func main() {
 	r.Mount("/api", app.BuildRoutes())
 
 	fmt.Println("starting server on port 8080")
-	http.ListenAndServe(":8080", r)
+	if err = http.ListenAndServe(":8080", r); err != nil {
+		logger.Error(err.Error())
+	}
 }

@@ -14,6 +14,12 @@ import (
 	"github.com/go-ozzo/ozzo-validation/v4/is"
 )
 
+const (
+	DEFAULT_PAGE     = 1
+	DEFAULT_PER_PAGE = 20
+	MAX_PER_PAGE     = 100
+)
+
 type Application struct {
 	logger *slog.Logger
 	repo   database.ArticleRepository
@@ -97,16 +103,37 @@ func (a *Application) GetArticles(w http.ResponseWriter, r *http.Request) {
 		tags = utils.Map(strings.Split(rawTags, ","), mapFn)
 	}
 
+	rawPage := r.URL.Query().Get("page")
+	page, err := strconv.Atoi(rawPage)
+	if err != nil || page <= 0 {
+		page = DEFAULT_PAGE
+	}
+
+	rawPerPage := r.URL.Query().Get("per_page")
+	perPage, err := strconv.Atoi(rawPerPage)
+	if err != nil {
+		perPage = DEFAULT_PER_PAGE
+	}
+
+	if perPage > MAX_PER_PAGE || perPage <= 0 {
+		perPage = MAX_PER_PAGE
+	}
+
+	pageable := database.Paging{
+		Page:    page,
+		PerPage: perPage,
+	}
+
 	// get articles by tags
 	// todo: paginate articles
-	articles, err := a.repo.GetArticles(r.Context(), database.ArticleFilter{Tags: tags})
+	articles, paginationData, err := a.repo.GetArticles(r.Context(), database.ArticleFilter{Tags: tags}, pageable)
 	if err != nil {
 		utils.HTTPError(w, http.StatusInternalServerError, "An unexpected error occured")
 		a.logger.Error(err.Error())
 		return
 	}
 
-	utils.Ok(w, envelope{"articles": articles}, nil)
+	utils.Ok(w, envelope{"articles": articles}, paginationData)
 }
 
 func (a *Application) GetArticleByID(w http.ResponseWriter, r *http.Request) {

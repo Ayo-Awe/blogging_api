@@ -2,9 +2,11 @@ package database
 
 import (
 	"context"
+	"math"
 	"slices"
 	"testing"
 
+	"github.com/ayo-awe/blogging_api/utils"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/require"
 )
@@ -93,13 +95,19 @@ func TestGetArticles(t *testing.T) {
 	}
 
 	t.Run("fetch with no filter", func(t *testing.T) {
-		foundArticles, err := repo.GetArticles(context.Background(), ArticleFilter{})
+		foundArticles, _, err := repo.GetArticles(context.Background(), ArticleFilter{}, Paging{
+			Page:    1,
+			PerPage: 5,
+		})
 		require.NoError(t, err)
 		require.Len(t, foundArticles, len(articles))
 	})
 
 	t.Run("filter by multiple tags", func(t *testing.T) {
-		foundArticles, err := repo.GetArticles(context.Background(), ArticleFilter{Tags: Tags{"golang", "food"}})
+		foundArticles, _, err := repo.GetArticles(context.Background(), ArticleFilter{Tags: Tags{"golang", "food"}}, Paging{
+			Page:    1,
+			PerPage: 20,
+		})
 		require.NoError(t, err)
 		require.Len(t, foundArticles, 4)
 
@@ -109,10 +117,62 @@ func TestGetArticles(t *testing.T) {
 	})
 
 	t.Run("filter by empty tags", func(t *testing.T) {
-		foundArticles, err := repo.GetArticles(context.Background(), ArticleFilter{Tags: Tags{}})
+		foundArticles, _, err := repo.GetArticles(context.Background(), ArticleFilter{Tags: Tags{}}, Paging{
+			Page:    1,
+			PerPage: 20,
+		})
 		require.NoError(t, err)
 		require.Len(t, foundArticles, len(articles))
 	})
+
+	paginationTestCases := []struct {
+		name               string
+		expectedTotalItems int
+		filter             ArticleFilter
+		perPage            int
+	}{
+		{
+			name:               "page with no filter",
+			expectedTotalItems: len(articles),
+			perPage:            2,
+		},
+		{
+			name:               "page with filter",
+			expectedTotalItems: 2,
+			filter:             ArticleFilter{Tags{"go"}},
+			perPage:            2,
+		},
+	}
+
+	for _, tc := range paginationTestCases {
+		t.Run(tc.name, func(t *testing.T) {
+			perPage := 2
+			expectedTotalPages := math.Ceil(float64(tc.expectedTotalItems) / float64(perPage))
+
+			currentPage := 1
+			for currentPage <= int(expectedTotalPages) {
+				paging := Paging{
+					Page:    currentPage,
+					PerPage: perPage,
+				}
+
+				foundArticles, paginationData, err := repo.GetArticles(context.Background(), tc.filter, paging)
+				require.NoError(t, err)
+
+				require.Equal(t, paging.PerPage, paginationData.PerPage)
+				require.Equal(t, paging.Page, paginationData.CurrentPage)
+				require.Equal(t, len(foundArticles), paginationData.ItemCount)
+
+				expectedItemCount := utils.ClampInt(tc.expectedTotalItems-paging.PerPage*(currentPage-1), 0, paging.PerPage)
+				require.Equal(t, expectedItemCount, paginationData.ItemCount)
+
+				require.Equal(t, paginationData.TotalPages, int(expectedTotalPages))
+				require.Equal(t, paginationData.TotalItems, tc.expectedTotalItems)
+				currentPage++
+			}
+		})
+	}
+
 }
 
 func TestGetArticleByID(t *testing.T) {

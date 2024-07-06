@@ -32,7 +32,15 @@ const (
 		updated_at
 	FROM "articles"
 	WHERE tags ?| $1 OR $1 = '{}' OR $1 IS NULL
-	ORDER BY published_at DESC;`
+	ORDER BY published_at DESC
+	LIMIT $2
+	OFFSET $3;`
+
+	countArticles = `
+	SELECT
+		count(*)
+	FROM "articles"
+	WHERE tags ?| $1 OR $1 = '{}' OR $1 IS NULL;`
 
 	getArticleByID = `
 	SELECT
@@ -81,24 +89,32 @@ func (repo *articleRepo) CreateArticle(ctx context.Context, article *Article) (*
 	return newArticle, nil
 }
 
-func (repo *articleRepo) GetArticles(ctx context.Context, filter ArticleFilter) ([]Article, error) {
-	rows, err := repo.db.QueryxContext(ctx, getArticles, pq.Array(filter.Tags))
+func (repo *articleRepo) GetArticles(ctx context.Context, filter ArticleFilter, paging Paging) ([]Article, PaginationData, error) {
+	rows, err := repo.db.QueryxContext(ctx, getArticles, pq.Array(filter.Tags), paging.Limit(), paging.Offset())
 	if err != nil {
-		return nil, err
+		return []Article{}, PaginationData{}, err
 	}
 
-	var articles []Article
+	articles := []Article{}
 	for rows.Next() {
 		var article Article
 		err := rows.StructScan(&article)
 		if err != nil {
-			return nil, err
+			return []Article{}, PaginationData{}, err
 		}
 
 		articles = append(articles, article)
 	}
 
-	return articles, nil
+	var articleCount int
+	if err = repo.db.QueryRowContext(ctx, countArticles, pq.Array(filter.Tags)).Scan(&articleCount); err != nil {
+		return []Article{}, PaginationData{}, err
+	}
+
+	paginationData := PaginationData{}
+	paginationData.Build(paging, len(articles), articleCount)
+
+	return articles, paginationData, nil
 }
 
 func (repo *articleRepo) GetArticleByID(ctx context.Context, ID int) (*Article, error) {

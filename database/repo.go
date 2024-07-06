@@ -5,6 +5,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"math"
 	"strings"
 	"time"
 
@@ -14,6 +15,35 @@ import (
 
 type ArticleFilter struct {
 	Tags Tags
+}
+
+type PaginationData struct {
+	CurrentPage int `json:"current_page"`
+	TotalPages  int `json:"total_pages"`
+	ItemCount   int `json:"item_count"`
+	TotalItems  int `json:"total_items"`
+	PerPage     int `json:"per_page"`
+}
+
+func (p *PaginationData) Build(paging Paging, itemCount, totalItems int) {
+	p.CurrentPage = paging.Page
+	p.PerPage = paging.PerPage
+	p.ItemCount = itemCount
+	p.TotalItems = totalItems
+	p.TotalPages = int(math.Ceil(float64(totalItems) / float64(paging.PerPage)))
+}
+
+type Paging struct {
+	Page    int
+	PerPage int
+}
+
+func (p Paging) Limit() int {
+	return p.PerPage
+}
+
+func (p Paging) Offset() int {
+	return (p.Page - 1) * p.PerPage
 }
 
 type Tags []string
@@ -69,7 +99,7 @@ func (a *Article) clean() {
 }
 
 type ArticleRepository interface {
-	GetArticles(ctx context.Context, filter ArticleFilter) ([]Article, error)
+	GetArticles(ctx context.Context, filter ArticleFilter, pageable Paging) ([]Article, PaginationData, error)
 	GetArticleByID(ctx context.Context, ID int) (*Article, error)
 	CreateArticle(ctx context.Context, article *Article) (*Article, error)
 	UpdateArticle(ctx context.Context, article *Article) (*Article, error)

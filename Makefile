@@ -18,4 +18,7 @@ new-migration:
 migrate-drop:
 	migrate -path migrations -database ${DB_URL} -verbose drop
 
-.PHONY: migrate-up migrate-down new-migration migrate-force dev
+swag-fmt:
+	swag fmt
+
+.PHONY: migrate-up migrate-down new-migration migrate-force dev swag-fmt

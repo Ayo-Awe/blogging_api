@@ -18,11 +18,11 @@ type ArticleFilter struct {
 }
 
 type PaginationData struct {
-	CurrentPage int `json:"current_page"`
-	TotalPages  int `json:"total_pages"`
-	ItemCount   int `json:"item_count"`
-	TotalItems  int `json:"total_items"`
-	PerPage     int `json:"per_page"`
+	CurrentPage int `json:"current_page" example:"1"`
+	TotalPages  int `json:"total_pages" example:"2"`
+	ItemCount   int `json:"item_count" example:"25"`
+	TotalItems  int `json:"total_items" example:"40"`
+	PerPage     int `json:"per_page" example:"25"`
 }
 
 func (p *PaginationData) Build(paging Paging, itemCount, totalItems int) {
@@ -71,12 +71,12 @@ func (t *Tags) Scan(value interface{}) error {
 }
 
 type Article struct {
-	ID          int       `json:"id" db:"id"`
-	Title       string    `json:"title" db:"title"`
-	Content     string    `json:"content" db:"content"`
-	Tags        Tags      `json:"tags" db:"tags"`
-	PublishedAt time.Time `json:"published_at" db:"published_at"`
-	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+	ID          int       `json:"id" db:"id" example:"1"`
+	Title       string    `json:"title" db:"title" example:"I love Golang"`
+	Content     string    `json:"content" db:"content" example:"lorem ipsum lorem ipsum"`
+	Tags        Tags      `json:"tags" db:"tags" example:"golang,go,tech"`
+	PublishedAt time.Time `json:"published_at" db:"published_at" example:"2024-06-23T22:21:19.00199+01:00"`
+	UpdatedAt   time.Time `json:"updated_at" db:"updated_at" example:"2024-06-23T22:21:19.00199+01:00"`
 }
 
 func (a *Article) Validate() error {

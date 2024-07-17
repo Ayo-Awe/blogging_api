@@ -2,32 +2,48 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"log/slog"
 	"net/http"
-	"os"
 
 	"github.com/ayo-awe/blogging_api/api"
 	"github.com/ayo-awe/blogging_api/database"
 	_ "github.com/ayo-awe/blogging_api/docs"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/joho/godotenv"
+	"github.com/kelseyhightower/envconfig"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
+
+type Config struct {
+	PORT         int    `envconfig:"PORT" default:"8080"`
+	DATABASE_URL string `envconfig:"DB_URL" required:"true"`
+}
 
 //	@title			Golang Blogging API
 //	@version		1.0
 //	@description	This is a minimalist blogging api.
 
-//	@BasePath	/api
+// @BasePath	/api
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	r := chi.NewRouter()
 	logger := slog.Default()
+	cfg, err := LoadConfig()
 
-	// todo: fetch db_url and port from env
-	db, err := database.NewDatabase("postgresql://aweayo:aweayo@localhost:5432/blogging_api?sslmode=disable")
 	if err != nil {
-		logger.Error(err.Error())
-		os.Exit(1)
+		return err
+	}
+
+	db, err := database.NewDatabase(cfg.DATABASE_URL)
+	if err != nil {
+		return err
 	}
 
 	repo := database.NewArticleRepository(db)
@@ -38,7 +54,24 @@ func main() {
 	r.Get("/swagger/*", httpSwagger.Handler())
 
 	fmt.Println("starting server on port 8080")
-	if err = http.ListenAndServe(":8080", r); err != nil {
-		logger.Error(err.Error())
+	addr := fmt.Sprintf(":%d", cfg.PORT)
+	if err = http.ListenAndServe(addr, r); err != nil {
+		return err
 	}
+
+	return nil
+}
+
+func LoadConfig() (*Config, error) {
+	var config Config
+
+	if err := godotenv.Load(); err != nil {
+		return nil, err
+	}
+
+	if err := envconfig.Process("", &config); err != nil {
+		return nil, err
+	}
+
+	return &config, nil
 }
